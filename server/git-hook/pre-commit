@@ -1,0 +1,121 @@
+#!/bin/bash
+
+currentver=`php -r 'echo phpversion();'`
+requiredver="8.2"
+if [ "$(printf '%s\n' "$requiredver" "$currentver" | sort -V | head -n1)" != "$requiredver" ]; then 
+    echo "PHP Version is Less than ${requiredver}"
+    exit 1;
+fi
+PROJECT=`php -r "echo dirname(dirname(dirname(realpath('$0'))));"`
+STAGED_FILES_CMD=`git diff --cached --name-only --diff-filter=ACMR HEAD | grep \\\\.php`
+STAGED_JS_CMD=`git diff --cached --name-only --diff-filter=ACMR HEAD | grep \\\\.js`
+RULE_SET_DIR="[RULE_SET_DIR]"
+#EXCLUDE_DIR = migrations
+# Download rule engine files
+
+if curl --output /dev/null --silent --head --fail "[RULE-REMOTE-HOST]"
+then
+	wget -O "$RULE_SET_DIR"phpcs.ruleset.xml [RULE-REMOTE-HOST]phpcs.ruleset.xml
+	wget -O "$RULE_SET_DIR"phpmd.ruleset.xml [RULE-REMOTE-HOST]phpmd.ruleset.xml	
+else
+	echo "$(tput setaf 3)Unable to connect remote server.Using local ruleset files.$(tput sgr0)"; 
+fi
+
+#wget -O $RULE_SET_DIR/phpcs.ruleset.xml [RULE-REMOTE-HOST]phpcs.ruleset.xml
+#wget -O $RULE_SET_DIR/phpmd.ruleset.xml [RULE-REMOTE-HOST]phpmd.ruleset.xml
+
+# Determine if a file list is passed
+if [ "$#" -eq 1 ]
+then
+    oIFS=$IFS
+    IFS='
+    '
+    SFILES="$1"
+    IFS=$oIFS
+fi
+SFILES=${SFILES:-$STAGED_FILES_CMD}
+
+echo "$(tput setaf 2)Checking PHP Lint...$(tput sgr0)"
+for FILE in $SFILES
+do
+    php -l -d display_errors=0 "$PROJECT/$FILE"
+    if [ $? != 0 ]
+    then
+	echo " $(tput setaf 1)Fix the error before commit.$(tput sgr0)"        
+        exit 1
+    fi
+    FILES="$FILES \"$PROJECT/$FILE\""
+done
+
+MDRULESET=[RULE_SET_DIR][RULE-SET-MESS-DETECTOR]
+if [ -f "$MDRULESET" ]
+then
+   	echo "$(tput setaf 2)Checking PHP mess detector, using $MDRULESET as ruleset standard...$(tput sgr0)"
+	for FILE in $SFILES
+	do
+	    ./precommit/vendor/bin/phpmd  "$PROJECT/$FILE" text codesize,"$MDRULESET" --exclude [PHPMD_EXCLUDE_DIR]
+	    if [ $? != 0 ]
+	    then
+		#echo "Fix the error before commit."
+		echo " $(tput setaf 1)Fix the error before commit.$(tput sgr0)"        
+		exit 1
+	    else
+		echo "No mess detector error detected in $PROJECT/$FILE"        
+	    fi
+
+	done
+fi
+
+
+#if [ -f "$PROJECT/phpcs.ruleset.xml" ]
+#then
+    #RULESET="$PROJECT/phpcs.ruleset.xml,WordPress"
+#else
+    #RULESET="WordPress"
+#fi
+RULESET=[RULE_SET_DIR][RULE-SET-CS]
+#Auto Fix and add to git 
+echo "$(tput setaf 2)Auto Fixing Code Standard Compliance, using $RULESET as ruleset standard...$(tput sgr0)"
+for FILE in $SFILES
+do
+     ./precommit/vendor/bin/phpcbf --standard="$RULESET" "$PROJECT/$FILE"
+     git add "$PROJECT/$FILE"
+done
+
+echo "$(tput setaf 2)Checking Code Standard Compliance, using $RULESET as ruleset standard...$(tput sgr0)"
+for FILE in $SFILES
+do
+    ./precommit/vendor/bin/phpcs --standard="$RULESET" --colors --encoding=utf-8 -p "$PROJECT/$FILE" --ignore=[PHPCS_EXCLUDE_DIR]
+    if [ $? != 0 ]
+    then
+        echo " $(tput setaf 1)Fix the error before commit.$(tput sgr0)"        
+        echo "Run"
+        echo "  ./precommit/vendor/bin/phpcbf --standard=\"$RULESET\" $FILES"
+        echo "for automatic fix or fix it manually."
+        exit 1
+       else
+	echo "No code standard compliance error detected in $PROJECT/$FILE"        
+    fi
+done
+
+for FILE in $STAGED_JS_CMD
+do
+    ./precommit/vendor/bin/phpcs --standard="WordPress-VIP-Go" --colors --encoding=utf-8 -p "$PROJECT/$FILE" --ignore=[PHPCS_EXCLUDE_DIR]
+    if [ $? != 0 ]
+    then
+        echo " $(tput setaf 1)Fix the error before commit.$(tput sgr0)"
+        exit 1
+       else
+    echo "No code standard compliance error detected in $PROJECT/$FILE"        
+    fi
+done
+
+if ! yarn build:[BUILD_VER]:all; then
+    echo " $(tput setaf 1) Unable to build the code, fix the error before commit.$(tput sgr0)"
+    exit 1;
+fi
+
+function validate_url(){
+  if [[ `wget -S --spider $1  2>&1 | grep 'HTTP/1.1 200 OK'` ]]; then echo "true"; fi
+}
+exit $?
