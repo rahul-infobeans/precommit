@@ -37,7 +37,7 @@
       "phpcs_rule_set": "phpcs.ruleset.xml",
       "phpmd_rule_set": "phpmd.ruleset.xml",
       "phpmd_exclude_dir": "precommit,*/vendor",
-      "phpcs_exclude_dir": "precommit,*/vendor",
+      "phpcs_exclude_dir": "precommit,*/vendor,client-mu-plugins/idg-data-migration,client-mu-plugins/idg-asset-manager,client-mu-plugins/idg-configuration,client-mu-plugins/idg-golden-taxonomy,client-mu-plugins/idg-migration-images,client-mu-plugins/idg-post-type-filters,client-mu-plugins/idg-products,client-mu-plugins/idg-publishing-flow,client-mu-plugins/idg-sponsored-links,client-mu-plugins/idg-territories,client-mu-plugins/idg-third-party,themes/cio-child-theme,themes/idg-base-theme,themes/macworld-com-child-theme",
       "php_ver": "8.2"
     }
   }
