@@ -28,19 +28,19 @@ class Hook
         // Get PHP version
         $php_ver = $event->getComposer()->getConfig()->get('rule_set_info')['php_ver'] ?? '8.2';
         // Check remote URL exists or not
-        $file_headers      = @get_headers($remote_host);
+        $file_headers      = @get_headers($remote_host.'phpcs.ruleset.xml'); //Updated with the new server directory ACL.
         if (!$file_headers || $file_headers[0] == 'HTTP/1.1 404 Not Found') {
             exit();
         } else {
             if (!empty($remote_host) && !empty($phpcs_rule_set) && !empty($phpmd_rule_set)) {
-                // Set rult set directory
+                // Set rule set directory
                 chdir('../');
                 $target_dir      = getcwd().DIRECTORY_SEPARATOR.'.git'.DIRECTORY_SEPARATOR.'hooks';
                 if (!file_exists($target_dir)) {
                     mkdir($target_dir, 0777, true);
                 }
                 // Get pre commit hook from server
-                $pre_commit_hook = file_get_contents($remote_host.'pre-commit');
+                $pre_commit_hook = file_get_contents($remote_host.DIRECTORY_SEPARATOR.'git-hook'.DIRECTORY_SEPARATOR.'pre-commit');
                 $find    = [ '[RULE-REMOTE-HOST]', '[RULE-SET-CS]', '[RULE-SET-MESS-DETECTOR]', '[RULE_SET_DIR]', '[PHPMD_EXCLUDE_DIR]', '[PHPCS_EXCLUDE_DIR]', '[BUILD_VER]', '[PHP_VER]' ];
                 $replace = [ $remote_host, $phpcs_rule_set, $phpmd_rule_set, self::$rule_set_dir, $phpmd_exclude_dir, $phpcs_exclude_dir, $build_ver, $php_ver ];
                 //Replace all the configs in the server precommit file.

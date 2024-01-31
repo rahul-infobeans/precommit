@@ -13,7 +13,7 @@ RULE_SET_DIR="[RULE_SET_DIR]"
 #EXCLUDE_DIR = migrations
 # Download rule engine files
 
-if curl --output /dev/null --silent --head --fail "[RULE-REMOTE-HOST]"
+if curl --output /dev/null --silent --head --fail [RULE-REMOTE-HOST]phpcs.ruleset.xml
 then
 	wget -O "$RULE_SET_DIR"phpcs.ruleset.xml [RULE-REMOTE-HOST]phpcs.ruleset.xml
 	wget -O "$RULE_SET_DIR"phpmd.ruleset.xml [RULE-REMOTE-HOST]phpmd.ruleset.xml	
